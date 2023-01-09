@@ -1,3 +1,0 @@
-http://mysonospresenceIPorDomainName/%s/next
-http://mysonospresenceIPorDomainName/%s/playpause
-http://mysonospresenceIPorDomainName/%s/prev
