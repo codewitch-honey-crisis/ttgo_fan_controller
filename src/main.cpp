@@ -11,11 +11,13 @@
 #include <fonts/Telegrama.hpp>
 
 static int_encoder<ENCODER_DATA,ENCODER_CLK,true> knob;
-static char tmpsz[256];
 static fan_controller fan(
     [](uint16_t duty,void* state){ ledcWrite(0,duty>>8); },
     nullptr,
     FAN_TACH, MAX_RPM);
+
+static char tmpsz[256];
+
 static void draw_center_text(const char* text, int size=30) {
     draw::filled_rectangle(lcd,lcd.bounds(),color_t::purple);
     open_text_info oti;
@@ -39,7 +41,10 @@ void setup() {
     }
     fan.initialize();
     fan.pwm_duty(0);
-    snprintf(tmpsz,sizeof(tmpsz),"Max RPM: %d",(int)fan.max_rpm());
+    snprintf(tmpsz,
+            sizeof(tmpsz),
+            "Max RPM: %d",
+            (int)fan.max_rpm());
     draw_center_text(tmpsz,20);
     knob.initialize();
     delay(3000);
@@ -56,7 +61,10 @@ void loop() {
             Serial.print("RPM: ");
             Serial.println(fan.rpm());
             old_rpm = fan.rpm();
-            snprintf(tmpsz,sizeof(tmpsz),"Fan RPM: %d",(int)fan.rpm());
+            snprintf(tmpsz,
+                    sizeof(tmpsz),
+                    "Fan RPM: %d",
+                    (int)fan.rpm());
             draw_center_text(tmpsz,20);
         }
     }
@@ -69,7 +77,8 @@ void loop() {
     if(old_knob!=knob.position()) {
         Serial.print("Knob: ");
         Serial.println(knob.position());
-        float new_rpm = fan.max_rpm()*(knob.position()/100.0);
+        float new_rpm = fan.max_rpm()*
+            (knob.position()/100.0);
         Serial.print("New RPM: ");
         Serial.println(new_rpm);
         fan.rpm(new_rpm);
