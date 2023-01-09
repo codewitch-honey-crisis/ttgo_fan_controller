@@ -1,0 +1,32 @@
+TTGO = devkit
+LVL = level shifter
+ENC = encoder
+FAN = fan
+CGND = common ground
+5V - 5 volt rail
+3.3V - 3.3 volt rail
+12v - 12 volt rail
+
+TTGO 32 -> LVL LV-1
+TTGO 33 -> LVL LV-2
+TTGO 17 -> ENC CLK
+TTGO 13 -> ENC DATA
+TTGO 3.3 -> 3.3V
+TTGO VIN -> 5V
+TTGO GND -> CGND
+
+ENC VIN -> 3.3V
+ENC GND -> CGND
+
+LVL HV-1 -> FAN PWM
+LVL HV-2 -> FAN TACH
+LVL HV -> 5V
+LVL LV -> 3.3V
+LVL GND -> CGND
+
+FAN +12 -> 12V
+FAN GND -> CGND
+
+Connect 12V to a .2A or better 12v power supply
+Connect the TTGO via USB to a PC, or power it off the 5v VIN. Battery won't work for this
+
