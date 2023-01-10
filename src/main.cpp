@@ -25,6 +25,7 @@ static uint8_t frame_buffer_data[frame_buffer_t::sizeof_buffer({lcd_t::base_widt
 // temporary strings for formatting
 static char tmpsz1[256];
 static char tmpsz2[256];
+static char tmpsz3[256];
 
 static int mode = 0; // 0 = RPM, 1 = PWM
 
@@ -38,10 +39,12 @@ float new_rpm = 0;
 static void draw_center_text(const char* text, int size=30) {
     // finish any pending async draws
     draw::wait_all_async(lcd);
+
     // get a bitmap over our frame buffer
     frame_buffer_t frame_buffer(lcd.dimensions(),frame_buffer_data);
     // clear it to purple
     draw::filled_rectangle(frame_buffer,frame_buffer.bounds(),color_t::purple);
+
     // fill the text structure
     open_text_info oti;
     oti.font = &text_font;
@@ -54,17 +57,20 @@ static void draw_center_text(const char* text, int size=30) {
     txtr.center_inplace((srect16)frame_buffer.bounds());
     // draw it to the frame buffer
     draw::text(frame_buffer,txtr,oti,color_t::white,color_t::purple);
+
     // asynchronously send the frame buffer to the LCD (uses DMA)
     draw::bitmap_async(lcd,lcd.bounds(),frame_buffer,frame_buffer.bounds());
 }
 // draw centered text in more than one area
-static void draw_center_2_text(const char* text1, const char* text2, int size=30) {
+static void draw_center_status_text(const char* text1, const char* text2, const char* text3, int size=30) {
     // finish any pending async draws
     draw::wait_all_async(lcd);
+
     // get a bitmap over our frame buffer
     frame_buffer_t frame_buffer(lcd.dimensions(),frame_buffer_data);
     // clear it to purple
     draw::filled_rectangle(frame_buffer,frame_buffer.bounds(),color_t::purple);
+
     // fill the text structure
     open_text_info oti;
     oti.font = &text_font;
@@ -77,9 +83,22 @@ static void draw_center_2_text(const char* text1, const char* text2, int size=30
     txtr.center_horizontal_inplace((srect16)frame_buffer.bounds());
     // move it down 10 pixels
     txtr.offset_inplace(0,10);
+    // draw it
     draw::text(frame_buffer,txtr,oti,color_t::white,color_t::purple);
-    // set the other text
+    
+    // set the next text
     oti.text = text2;
+    // measure it
+    txtr = oti.font->measure_text(ssize16::max(),spoint16::zero(),oti.text,oti.scale).bounds();
+    // center it horizontally
+    txtr.center_horizontal_inplace((srect16)frame_buffer.bounds());
+    // offset 10 pixels from the bottom of the previous text
+    txtr.offset_inplace(0,size+20);
+    // draw it
+    draw::text(frame_buffer,txtr,oti,color_t::white,color_t::purple);
+
+    // set the final text
+    oti.text = text3;
     // measure it
     txtr = oti.font->measure_text(ssize16::max(),spoint16::zero(),oti.text,oti.scale).bounds();
     // center it horizontally
@@ -88,6 +107,7 @@ static void draw_center_2_text(const char* text1, const char* text2, int size=30
     txtr.offset_inplace(0,frame_buffer.dimensions().height-size-10);
     // draw the text to the frame buffer
     draw::text(frame_buffer,txtr,oti,color_t::white,color_t::purple);
+
     // asynchronously send it to the LCD
     draw::bitmap_async(lcd,lcd.bounds(),frame_buffer,frame_buffer.bounds());
 }
@@ -161,6 +181,7 @@ void loop() {
             Serial.print("RPM: ");
             Serial.println(fan.rpm());
             old_rpm = fan.rpm();
+            // format the RPM
             snprintf(tmpsz1,
                     sizeof(tmpsz1),
                     "Fan RPM: %d",
@@ -168,17 +189,24 @@ void loop() {
             Serial.print("RPM: ");
             Serial.println(fan.rpm());
             old_rpm = fan.rpm();
+            // format the PWM
+            snprintf(tmpsz2,
+                    sizeof(tmpsz2),
+                    "Fan PWM: %d%%",
+                    (int)(((float)fan.pwm_duty()/65535.0)*100.0));
             if(mode==0) {
-                snprintf(tmpsz2,
-                        sizeof(tmpsz2),
+                // format the target RPM
+                snprintf(tmpsz3,
+                        sizeof(tmpsz3),
                         "Set RPM: %d",
                         (int)new_rpm);
             } else {
-                snprintf(tmpsz2,
-                        sizeof(tmpsz2),
+                // format the target PWM
+                snprintf(tmpsz3,
+                        sizeof(tmpsz3),
                         "Set PWM: %d%%",(int)knob.position());
             }
-            draw_center_2_text(tmpsz1,tmpsz2,25);
+            draw_center_status_text(tmpsz1,tmpsz2,tmpsz3,25);
             
         }
     }
