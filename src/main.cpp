@@ -125,7 +125,9 @@ static void on_click_handler(int clicks, void* state) {
         }
         // set the knob's position to reflect it
         knob.position(((float)new_rpm/fan.max_rpm())*100);
-    } 
+    } else {
+        new_rpm = NAN;
+    }
     // force the loop to reconsider the knob position
     --old_knob;
     old_rpm = NAN; // forces a redraw
