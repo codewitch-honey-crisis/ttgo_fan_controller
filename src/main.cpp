@@ -179,7 +179,7 @@ void setup() {
 }
 void loop() {
     
-    if(Serial.available()) {
+    while(Serial.available()) {
         uint32_t cmd;
         if(sizeof(cmd)==Serial.read((uint8_t*)&cmd,sizeof(cmd))) {
             switch(cmd) {
