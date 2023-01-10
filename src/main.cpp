@@ -97,6 +97,17 @@ static void draw_center_status_text(const char* text1, const char* text2, const 
     // draw it
     draw::text(frame_buffer,txtr,oti,color_t::white,color_t::purple);
 
+    // draw the PWM power bar
+    srect16 bar(10,txtr.y2,frame_buffer.dimensions().width-10,txtr.y2+size);
+    draw::filled_rectangle(frame_buffer,bar,color_t::dark_slate_gray);
+    bar.x2 = (bar.width()-1)*(fan.pwm_duty()/65535.0)+bar.x1;
+    draw::filled_rectangle(frame_buffer,bar,color_t::yellow);
+    bar.x2 = frame_buffer.dimensions().width-10;
+    auto px = color<rgba_pixel<32>>::dark_orange;
+    px.channel<channel_name::A>(127);
+    bar.x2 = (bar.width()-1)*(fan.rpm()/fan.max_rpm())+bar.x1;
+    draw::filled_rectangle(frame_buffer,bar,px);
+
     // set the final text
     oti.text = text3;
     // measure it
