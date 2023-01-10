@@ -15,6 +15,8 @@ static fan_controller fan(
     [](uint16_t duty,void* state){ ledcWrite(0,duty>>8); },
     nullptr,
     FAN_TACH, MAX_RPM);
+using frame_buffer_t = bitmap<typename lcd_t::pixel_type>;
+static uint8_t frame_buffer_data[frame_buffer_t::sizeof_buffer({lcd_t::base_width,lcd_t::base_height})];
 
 static char tmpsz1[256];
 static char tmpsz2[256];
@@ -27,32 +29,38 @@ static uint32_t ts=0;
 float new_rpm = 0;
 
 static void draw_center_text(const char* text, int size=30) {
-    draw::filled_rectangle(lcd,lcd.bounds(),color_t::purple);
+    draw::wait_all_async(lcd);
+    frame_buffer_t frame_buffer(lcd.dimensions(),frame_buffer_data);
+    draw::filled_rectangle(frame_buffer,frame_buffer.bounds(),color_t::purple);
     open_text_info oti;
     oti.font = &Telegrama;
     oti.text = text;
     oti.scale = oti.font->scale(size);
     oti.transparent_background = false;
     srect16 txtr = oti.font->measure_text(ssize16::max(),spoint16::zero(),oti.text,oti.scale).bounds();
-    txtr.center_inplace((srect16)lcd.bounds());
-    draw::text(lcd,txtr,oti,color_t::white,color_t::purple);
+    txtr.center_inplace((srect16)frame_buffer.bounds());
+    draw::text(frame_buffer,txtr,oti,color_t::white,color_t::purple);
+    draw::bitmap_async(lcd,lcd.bounds(),frame_buffer,frame_buffer.bounds());
 }
 static void draw_center_2_text(const char* text1, const char* text2, int size=30) {
-    draw::filled_rectangle(lcd,lcd.bounds(),color_t::purple);
+    draw::wait_all_async(lcd);
+    frame_buffer_t frame_buffer(lcd.dimensions(),frame_buffer_data);
+    draw::filled_rectangle(frame_buffer,frame_buffer.bounds(),color_t::purple);
     open_text_info oti;
     oti.font = &Telegrama;
     oti.text = text1;
     oti.scale = oti.font->scale(size);
     oti.transparent_background = false;
     srect16 txtr = oti.font->measure_text(ssize16::max(),spoint16::zero(),oti.text,oti.scale).bounds();
-    txtr.center_horizontal_inplace((srect16)lcd.bounds());
+    txtr.center_horizontal_inplace((srect16)frame_buffer.bounds());
     txtr.offset_inplace(0,10);
-    draw::text(lcd,txtr,oti,color_t::white,color_t::purple);
+    draw::text(frame_buffer,txtr,oti,color_t::white,color_t::purple);
     oti.text = text2;
     txtr = oti.font->measure_text(ssize16::max(),spoint16::zero(),oti.text,oti.scale).bounds();
-    txtr.center_horizontal_inplace((srect16)lcd.bounds());
-    txtr.offset_inplace(0,lcd.dimensions().height-size-10);
-    draw::text(lcd,txtr,oti,color_t::white,color_t::purple);
+    txtr.center_horizontal_inplace((srect16)frame_buffer.bounds());
+    txtr.offset_inplace(0,frame_buffer.dimensions().height-size-10);
+    draw::text(frame_buffer,txtr,oti,color_t::white,color_t::purple);
+    draw::bitmap_async(lcd,lcd.bounds(),frame_buffer,frame_buffer.bounds());
 }
 static void on_click_handler(int clicks, void* state) {
     mode = (mode+(clicks&1))&1;
