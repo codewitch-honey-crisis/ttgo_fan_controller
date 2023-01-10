@@ -6,11 +6,11 @@
 #include <ttgo.hpp>
 #include <encoder.hpp>
 #include <fan_controller.hpp>
+#include <interface.hpp>
 // downloaded from fontsquirrel.com and header generated with 
 // https://honeythecodewitch.com/gfx/generator
 #include <fonts/Telegrama.hpp>
 static const open_font& text_font = Telegrama;
-
 // hardware external to the TTGO
 static int_encoder<ENCODER_DATA,ENCODER_CLK,true> knob;
 static fan_controller fan(
@@ -34,6 +34,7 @@ static float old_rpm=NAN;
 static long long old_knob=-1;
 static uint32_t ts=0;
 float new_rpm = 0;
+static bool redraw = false;
 
 // draw text in center of screen
 static void draw_center_text(const char* text, int size=30) {
@@ -177,6 +178,57 @@ void setup() {
     delay(3000);
 }
 void loop() {
+    
+    if(Serial.available()) {
+        uint32_t cmd;
+        if(sizeof(cmd)==Serial.read((uint8_t*)&cmd,sizeof(cmd))) {
+            switch(cmd) {
+                case fan_set_rpm_message::command: {
+                    fan_set_rpm_message msg;
+                    Serial.read((uint8_t*)&msg,sizeof(msg));
+                    new_rpm = msg.value;
+                    old_rpm = NAN;
+                    knob.position(((float)new_rpm/fan.max_rpm())*100);
+                    mode = 0;
+                }
+                break;
+                case fan_set_pwm_duty_message::command: { 
+                    fan_set_pwm_duty_message msg;
+                    Serial.read((uint8_t*)&msg,sizeof(msg));
+                    new_rpm = NAN;
+                    fan.pwm_duty(msg.value);
+                    knob.position(((float)msg.value/65535.0)*100);
+                    mode = 1;
+                }
+                break;
+                case fan_get_message::command: { 
+                    fan_get_message msg;
+                    Serial.read((uint8_t*)&msg,sizeof(msg));
+                    fan_get_response_message rsp;
+                    rsp.rpm = fan.rpm();
+                    rsp.pwm_duty = fan.pwm_duty();
+                    rsp.max_rpm = fan.max_rpm();
+                    rsp.target_rpm = new_rpm;
+                    rsp.mode = mode;
+                    cmd = fan_get_response_message::command;
+                    while(!Serial.availableForWrite()) {
+                        delay(1);
+                    }
+                    Serial.write((uint8_t*)&cmd,sizeof(cmd));
+                    while(!Serial.availableForWrite()) {
+                        delay(1);
+                    }
+                    Serial.write((uint8_t*)&rsp,sizeof(rsp));
+                }
+                break;
+                default:
+                    while(Serial.available()) Serial.read();
+                break;
+            }
+        } else {
+            while(Serial.available()) Serial.read();
+        }
+    }
     // give the fan a chance to process
     fan.update();
     // range limit the knob to 0-100, inclusive
@@ -193,48 +245,43 @@ void loop() {
         // if RPM changed
         if(old_rpm!=fan.rpm()) {
             // print the info
-            Serial.print("RPM: ");
-            Serial.println(fan.rpm());
             old_rpm = fan.rpm();
-            // format the RPM
-            snprintf(tmpsz1,
-                    sizeof(tmpsz1),
-                    "Fan RPM: %d",
-                    (int)fan.rpm());
-            Serial.print("RPM: ");
-            Serial.println(fan.rpm());
-            old_rpm = fan.rpm();
-            // format the PWM
-            snprintf(tmpsz2,
-                    sizeof(tmpsz2),
-                    "Fan PWM: %d%%",
-                    (int)(((float)fan.pwm_duty()/65535.0)*100.0));
-            if(mode==0) {
-                // format the target RPM
-                snprintf(tmpsz3,
-                        sizeof(tmpsz3),
-                        "Set RPM: %d",
-                        (int)new_rpm);
-            } else {
-                // format the target PWM
-                snprintf(tmpsz3,
-                        sizeof(tmpsz3),
-                        "Set PWM: %d%%",(int)knob.position());
-            }
-            draw_center_status_text(tmpsz1,tmpsz2,tmpsz3,25);
+            redraw = true;
             
         }
     }
+    if(redraw) {
+        // format the RPM
+        snprintf(tmpsz1,
+                    sizeof(tmpsz1),
+                    "Fan RPM: %d",
+                    (int)fan.rpm());
+        // format the PWM
+        snprintf(tmpsz2,
+                    sizeof(tmpsz2),
+                    "Fan PWM: %d%%",
+                    (int)(((float)fan.pwm_duty()/65535.0)*100.0));
+        if(mode==0) {
+            // format the target RPM
+            snprintf(tmpsz3,
+                    sizeof(tmpsz3),
+                    "Set RPM: %d",
+                    (int)new_rpm);
+        } else {
+            // format the target PWM
+            snprintf(tmpsz3,
+                    sizeof(tmpsz3),
+                    "Set PWM: %d%%",(int)knob.position());
+        }
+        draw_center_status_text(tmpsz1,tmpsz2,tmpsz3,25);
+        redraw = false;
+    }
     // if the knob position changed   
     if(old_knob!=knob.position()) {
-        Serial.print("Knob: ");
-        Serial.println(knob.position());
         if(mode==0) {
             // set the new RPM
             new_rpm = fan.max_rpm()*
                 (knob.position()/100.0);
-            Serial.print("New RPM: ");
-            Serial.println(new_rpm);
             fan.rpm(new_rpm);
         } else {
             // set the new PWM
