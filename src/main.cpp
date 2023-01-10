@@ -187,8 +187,8 @@ void loop() {
     }
     // trivial timer
     uint32_t ms = millis();
-    // every quarter second...
-    if(ms>ts+250) {
+    // ten times a second...
+    if(ms>ts+100) {
         ts = ms;
         // if RPM changed
         if(old_rpm!=fan.rpm()) {
